@@ -10,7 +10,7 @@ O módulo de inventário permite realizar contagens rápidas de estoque usando Q
 ```
 /inventario
 ```
-- Apenas administradores podem iniciar um inventário
+- Qualquer usuário pode iniciar um inventário
 - O bot irá solicitar o escaneamento de QR Codes
 
 ### 2. **Processo de Inventário**
@@ -118,7 +118,7 @@ Cada item inventariado inclui:
 
 ## 🔒 Segurança
 
-- ✅ Apenas administradores podem usar
+- ✅ Acessível para todos os usuários
 - ✅ Validação de dados de entrada
 - ✅ Limpeza automática de dados temporários
 - ✅ Controle de sessão por usuário

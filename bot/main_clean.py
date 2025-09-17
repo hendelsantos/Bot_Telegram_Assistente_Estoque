@@ -43,7 +43,7 @@ async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '/buscar <palavra-chave> - Buscar itens\n'
         '/buscar_qr (foto) - Buscar item por QR Code\n'
         '/atualizar <ID> - Atualizar item (admin)\n'
-        '/inventario - Iniciar inventário com QR Code (admin)\n'
+        '/inventario - Iniciar inventário com QR Code\n'
         '/enviar_reparo <ID> - Enviar item para reparo (admin)\n'
         '/retornar_reparo <ID> - Retornar item de reparo (admin)\n'
         '/excluir <ID> - Excluir item (admin)\n'
@@ -544,10 +544,6 @@ async def gerar_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Módulo de Inventário
 async def inventario(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text('Apenas administradores podem fazer inventário.')
-        return ConversationHandler.END
-    
     # Inicializar lista de inventário no contexto
     context.user_data['inventario_lista'] = []
     

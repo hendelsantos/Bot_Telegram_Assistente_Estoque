@@ -119,7 +119,7 @@ CREATE TABLE movimentacoes (
 - `/menu` - Exibir menu de navegação rápida
 - `/novoitem` - Cadastrar novo item
 - `/buscar` - Buscar itens no estoque
-- `/inventario` - Iniciar inventário com QR Code (admin)
+- `/inventario` - Iniciar inventário com QR Code
 - `/atualizar` - Atualizar informações de itens
 - `/excluir` - Remover itens do sistema
 - `/relatorio` - Gerar relatórios
