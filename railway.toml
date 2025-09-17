@@ -3,7 +3,7 @@ startCommand = "python start_railway.py"
 restartPolicyType = "ON_FAILURE"
 
 [build]
-buildCommand = "pip install -r requirements.txt"
+buildCommand = "pip install -r requirements-railway.txt"
 
 [variables]
 PORT = "8080"

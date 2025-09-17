@@ -9,6 +9,10 @@ import sys
 import sqlite3
 import subprocess
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 def setup_environment():
     """Configura o ambiente para produção"""
@@ -36,8 +40,8 @@ def start_services():
         print("🌐 Iniciando WebApp Server...")
         os.execv(sys.executable, [sys.executable, 'server/webapp_server.py'])
     elif service == 'bot':
-        print("🤖 Iniciando Telegram Bot (Railway version)...")
-        os.execv(sys.executable, [sys.executable, 'bot/railway_bot.py'])
+        print("🤖 Iniciando Telegram Bot (Railway Simple)...")
+        os.execv(sys.executable, [sys.executable, 'bot/railway_bot_simple.py'])
     else:
         # Padrão: apenas WebApp
         print("🌐 Iniciando WebApp Server (padrão)...")
