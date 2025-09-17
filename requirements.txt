@@ -2,7 +2,6 @@ python-telegram-bot>=20.0
 aiosqlite
 pandas
 reportlab
-pyzbar
 Pillow
 qrcode
 openpyxl

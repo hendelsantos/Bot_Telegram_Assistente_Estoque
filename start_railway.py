@@ -36,8 +36,8 @@ def start_services():
         print("🌐 Iniciando WebApp Server...")
         os.execv(sys.executable, [sys.executable, 'server/webapp_server.py'])
     elif service == 'bot':
-        print("🤖 Iniciando Telegram Bot...")
-        os.execv(sys.executable, [sys.executable, 'bot/main_clean.py'])
+        print("🤖 Iniciando Telegram Bot (Railway version)...")
+        os.execv(sys.executable, [sys.executable, 'bot/railway_bot.py'])
     else:
         # Padrão: apenas WebApp
         print("🌐 Iniciando WebApp Server (padrão)...")
