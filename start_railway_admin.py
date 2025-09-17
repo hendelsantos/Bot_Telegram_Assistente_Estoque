@@ -43,8 +43,8 @@ def start_services():
     service = os.environ.get('RAILWAY_SERVICE_NAME', 'admin')
     
     if service == 'admin':
-        print("👑 Iniciando Bot Administrativo Railway...")
-        os.execv(sys.executable, [sys.executable, 'bot/railway_admin_bot.py'])
+        print("👑 Iniciando Bot Completo Railway...")
+        os.execv(sys.executable, [sys.executable, 'bot/railway_completo.py'])
     elif service == 'web':
         print("🌐 Iniciando WebApp Server...")
         os.execv(sys.executable, [sys.executable, 'server/webapp_server.py'])
