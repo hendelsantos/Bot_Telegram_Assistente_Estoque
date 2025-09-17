@@ -1,0 +1,11 @@
+[deploy]
+startCommand = "python start_railway_admin.py"
+restartPolicyType = "ON_FAILURE"
+
+[build]
+buildCommand = "pip install -r requirements-railway.txt"
+
+[variables]
+PORT = "8080"
+PYTHONPATH = "/app"
+RAILWAY_SERVICE_NAME = "admin"
