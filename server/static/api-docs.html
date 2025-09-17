@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Sistema de Estoque - Documentação</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.2em;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .endpoint {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-right: 10px;
+        }
+        
+        .get { background: #27ae60; }
+        .post { background: #f39c12; }
+        .put { background: #8e44ad; }
+        .delete { background: #e74c3c; }
+        
+        .code {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .auth-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .example {
+            background: #e8f5e8;
+            border-left: 4px solid #27ae60;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #3498db;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #3498db;
+            color: white;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 API Sistema de Estoque</h1>
+            <p>API REST profissional para gerenciamento de inventário</p>
+            <div class="badge">Versão 1.0</div>
+        </div>
+
+        <div class="auth-info">
+            <h3>🔐 Autenticação</h3>
+            <p>Todas as requisições requerem header de autenticação:</p>
+            <div class="code">X-API-Key: sua-api-key-aqui</div>
+            <p><strong>Rate Limit:</strong> 100 requisições por hora por IP</p>
+        </div>
+
+        <div class="section">
+            <h2>📋 Informações da API</h2>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <strong>/api/v1/</strong>
+                <p>Retorna informações básicas da API e lista de endpoints disponíveis.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📦 Gerenciamento de Itens</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <strong>/api/v1/items</strong>
+                <p>Lista todos os itens com paginação e filtros opcionais.</p>
+                
+                <h4>Parâmetros:</h4>
+                <table>
+                    <tr><th>Parâmetro</th><th>Tipo</th><th>Descrição</th></tr>
+                    <tr><td>limit</td><td>int</td><td>Máximo de itens (padrão: 50, máx: 1000)</td></tr>
+                    <tr><td>offset</td><td>int</td><td>Pular N itens (padrão: 0)</td></tr>
+                    <tr><td>category</td><td>string</td><td>Filtrar por categoria</td></tr>
+                    <tr><td>low_stock</td><td>boolean</td><td>Apenas itens com estoque baixo</td></tr>
+                </table>
+                
+                <div class="example">
+                    <strong>Exemplo:</strong>
+                    <div class="code">GET /api/v1/items?limit=10&category=notebook&low_stock=true</div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <strong>/api/v1/items/{code}</strong>
+                <p>Obter um item específico pelo código.</p>
+                
+                <div class="example">
+                    <strong>Exemplo:</strong>
+                    <div class="code">GET /api/v1/items/NOTE-001</div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <strong>/api/v1/items</strong>
+                <p>Criar novo item. Código será gerado automaticamente.</p>
+                
+                <h4>Body JSON:</h4>
+                <div class="code">{
+  "nome": "Notebook Dell",
+  "descricao": "Notebook para escritório",
+  "quantidade": 10,
+  "categoria": "notebook",
+  "localizacao": "Estoque A1",
+  "fornecedor": "Dell Inc",
+  "preco_unitario": 2500.00
+}</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method put">PUT</span>
+                <strong>/api/v1/items/{code}</strong>
+                <p>Atualizar item existente. Apenas campos fornecidos serão atualizados.</p>
+                
+                <div class="example">
+                    <strong>Exemplo:</strong>
+                    <div class="code">PUT /api/v1/items/NOTE-001
+{
+  "quantidade": 15,
+  "preco_unitario": 2300.00
+}</div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method delete">DELETE</span>
+                <strong>/api/v1/items/{code}</strong>
+                <p>Remover item do estoque.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔍 Busca e Pesquisa</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <strong>/api/v1/items/search</strong>
+                <p>Buscar itens por termo. Busca em nome, código, descrição e categoria.</p>
+                
+                <h4>Parâmetros:</h4>
+                <table>
+                    <tr><th>Parâmetro</th><th>Tipo</th><th>Descrição</th></tr>
+                    <tr><td>q</td><td>string</td><td>Termo de busca (obrigatório)</td></tr>
+                    <tr><td>limit</td><td>int</td><td>Máximo de resultados (padrão: 20, máx: 100)</td></tr>
+                </table>
+                
+                <div class="example">
+                    <strong>Exemplo:</strong>
+                    <div class="code">GET /api/v1/items/search?q=mouse&limit=5</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🏷️ Categorias</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <strong>/api/v1/categories</strong>
+                <p>Lista todas as categorias com contagem de itens e quantidade total.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Relatórios</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <strong>/api/v1/reports/dashboard</strong>
+                <p>Estatísticas completas para dashboard administrativo.</p>
+                
+                <h4>Retorna:</h4>
+                <ul>
+                    <li>Total de itens</li>
+                    <li>Quantidade total em estoque</li>
+                    <li>Itens com estoque baixo</li>
+                    <li>Valor total do estoque</li>
+                    <li>Top 5 categorias</li>
+                    <li>5 itens mais recentes</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔔 Webhooks</h2>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <strong>/api/v1/webhooks/stock-alert</strong>
+                <p>Configurar webhook para alertas de estoque baixo.</p>
+                
+                <h4>Body JSON:</h4>
+                <div class="code">{
+  "webhook_url": "https://seu-sistema.com/webhook",
+  "threshold": 5
+}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📝 Formato de Resposta</h2>
+            
+            <h3>Sucesso:</h3>
+            <div class="code">{
+  "success": true,
+  "message": "Success",
+  "data": { ... },
+  "timestamp": "2025-09-17T00:00:00"
+}</div>
+
+            <h3>Erro:</h3>
+            <div class="code">{
+  "success": false,
+  "error": "Mensagem de erro",
+  "timestamp": "2025-09-17T00:00:00"
+}</div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Códigos de Status</h2>
+            <table>
+                <tr><th>Código</th><th>Descrição</th></tr>
+                <tr><td>200</td><td>Sucesso</td></tr>
+                <tr><td>201</td><td>Criado</td></tr>
+                <tr><td>400</td><td>Erro na requisição</td></tr>
+                <tr><td>401</td><td>Não autorizado (API key inválida)</td></tr>
+                <tr><td>404</td><td>Não encontrado</td></tr>
+                <tr><td>429</td><td>Rate limit excedido</td></tr>
+                <tr><td>500</td><td>Erro interno do servidor</td></tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
