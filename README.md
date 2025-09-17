@@ -4,12 +4,21 @@ Um bot inteligente para Telegram desenvolvido em Python para gestão completa de
 
 ## 🚀 Funcionalidades
 
+### 📸 **NOVO! Sistema de Fotos Implementado**
+- ✅ **Upload de Fotos**: Cadastro de itens com fotos via `/novoitem`
+- ✅ **Armazenamento Seguro**: Fotos salvas com UUID único em `/fotos/`
+- ✅ **Busca Visual**: Exibição automática de fotos nos resultados
+- ✅ **Sistema Opcional**: Pode pular a foto durante o cadastro
+- ✅ **Relatórios com Fotos**: Estatísticas incluindo contagem de fotos
+
 ### 📋 Gestão Básica
-- ✅ **Cadastro de Itens**: Nome, código, categoria, localização, quantidade, fotos
-- ✅ **Busca Inteligente**: Por nome, código ou categoria
+- ✅ **Cadastro de Itens**: Nome, descrição, catálogo, quantidade
+- ✅ **Upload de Fotos**: Sistema completo de fotos com armazenamento seguro
+- ✅ **Busca Visual**: Busca inteligente que exibe fotos automaticamente
+- ✅ **Catálogo Organizado**: Sistema de categorização por catálogos
 - ✅ **Atualização**: Modificar informações e quantidades
 - ✅ **Exclusão**: Remover itens do sistema
-- ✅ **Upload de Fotos**: Suporte a imagens para identificação visual
+- ✅ **Indicadores Visuais**: Emojis 📸 (com foto) e 📄 (sem foto)
 
 ### 🔧 Funcionalidades Avançadas
 - ✅ **Relatórios**: Geração de relatórios detalhados em PDF
