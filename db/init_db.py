@@ -20,10 +20,13 @@ CREATE TABLE IF NOT EXISTS itens (
     nome TEXT NOT NULL,
     descricao TEXT,
     quantidade INTEGER NOT NULL,
+    catalogo TEXT,
     status TEXT NOT NULL,
     foto_path TEXT,
+    foto_id TEXT,
     info_reparo TEXT,
-    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 '''
 
