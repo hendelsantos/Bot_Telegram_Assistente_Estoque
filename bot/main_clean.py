@@ -1,7 +1,7 @@
 import os
 import logging
 from datetime import datetime, timedelta
-from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler)
 import aiosqlite
 import pandas as pd
@@ -9,10 +9,14 @@ from pyzbar.pyzbar import decode
 from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+import json
 
 # Constantes
 DB_PATH = os.path.join(os.path.dirname(__file__), '../db/estoque.db')
 FOTOS_DIR = os.path.join(os.path.dirname(__file__), '../fotos')
+
+# URL do WebApp (configurar com sua URL pública)
+WEBAPP_URL = os.getenv('WEBAPP_URL', 'http://localhost:8080')
 
 # Estados para ConversationHandler
 FOTO, NOME, DESCRICAO, QUANTIDADE, CONFIRMACAO = range(5)
@@ -39,6 +43,7 @@ async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
         '🤖 <b>Assistente de Estoque - Comandos Principais</b>\n\n'
         '/menu - Menu rápido com botões\n'
+        '/webapp - 📱 Abrir WebApp com Scanner QR\n'
         '/novoitem - Cadastrar novo item (admin)\n'
         '/buscar <palavra-chave> - Buscar itens\n'
         '/buscar_qr (foto) - Buscar item por QR Code\n'
@@ -54,6 +59,8 @@ async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '/backup - Baixar backup do banco (admin)\n'
         '/restaurar (documento) - Restaurar banco (admin)\n'
         '/ajuda - Exibe esta mensagem\n\n'
+        '🚀 <b>Novidade: WebApp com Scanner QR!</b>\n'
+        'Use /webapp para scanner em tempo real - muito mais rápido!\n\n'
         'Use /menu para acessar as funções rapidamente!'
     )
     keyboard = [
@@ -64,6 +71,7 @@ async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
+        [InlineKeyboardButton('📱 WebApp - Scanner QR', callback_data='menu_webapp')],
         [InlineKeyboardButton('Cadastrar Novo Item', callback_data='menu_novoitem')],
         [InlineKeyboardButton('Buscar Itens', callback_data='menu_buscar')],
         [InlineKeyboardButton('Inventário QR', callback_data='menu_inventario')],
@@ -78,7 +86,9 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    if query.data == 'menu_novoitem':
+    if query.data == 'menu_webapp':
+        await webapp_inventario(query, context)
+    elif query.data == 'menu_novoitem':
         await query.message.reply_text('Use /novoitem para cadastrar um novo item.')
     elif query.data == 'menu_buscar':
         await query.message.reply_text('Use /buscar <palavra-chave> para buscar itens.')
@@ -94,6 +104,211 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text('Use /excluir <ID> para excluir um item.')
     else:
         await query.message.reply_text('Ação não reconhecida.')
+
+# ==================== WEBAPP FUNCTIONS ====================
+
+async def webapp_inventario(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Abrir WebApp para inventário com scanner QR em tempo real"""
+    
+    # Verificar se a URL é HTTPS (requerido pelo Telegram)
+    if WEBAPP_URL.startswith('https://'):
+        keyboard = [
+            [InlineKeyboardButton(
+                '📱 Abrir Scanner QR - Inventário',
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        texto = (
+            '🚀 <b>WebApp - Inventário com Scanner QR</b>\n\n'
+            '📲 Clique no botão abaixo para abrir o scanner QR em tempo real!\n\n'
+            '✨ <b>Funcionalidades:</b>\n'
+            '• Scanner QR em tempo real com câmera\n'
+            '• Busca automática de itens\n'
+            '• Controle de quantidades\n'
+            '• Relatório final do inventário\n\n'
+            '🔥 <b>Muito mais rápido que tirar fotos!</b>'
+        )
+        
+        await update.message.reply_text(
+            texto, 
+            reply_markup=reply_markup, 
+            parse_mode='HTML'
+        )
+    else:
+        # URL HTTP - mostrar instruções para HTTPS
+        texto = (
+            '🚀 <b>WebApp - Inventário com Scanner QR</b>\n\n'
+            '⚠️ <b>Configuração necessária:</b>\n'
+            'O Telegram WebApp requer HTTPS. Configure uma URL HTTPS para usar esta funcionalidade.\n\n'
+            '🔧 <b>Opções:</b>\n'
+            '• Use ngrok: <code>ngrok http 8080</code>\n'
+            '• Configure certificado SSL\n'
+            '• Use serviço de tunnel como localtunnel\n\n'
+            f'📍 <b>URL atual:</b> <code>{WEBAPP_URL}</code>\n'
+            '📍 <b>WebApp local:</b> <code>http://localhost:8080</code>\n\n'
+            '💡 <b>Enquanto isso:</b>\n'
+            'Use /inventario para o método tradicional com fotos.'
+        )
+        
+        await update.message.reply_text(texto, parse_mode='HTML')
+
+async def webapp_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler para receber dados do WebApp"""
+    if update.message.web_app_data:
+        try:
+            # Receber dados do WebApp
+            data = json.loads(update.message.web_app_data.data)
+            
+            if data.get('type') == 'inventory_finished':
+                await processar_inventario_webapp(update, context, data)
+            elif data.get('type') == 'item_lookup':
+                await responder_item_lookup(update, context, data)
+            else:
+                await update.message.reply_text('Tipo de dados não reconhecido.')
+                
+        except json.JSONDecodeError:
+            await update.message.reply_text('Erro ao processar dados do WebApp.')
+        except Exception as e:
+            logging.error(f'Erro no WebApp handler: {str(e)}')
+            await update.message.reply_text('Erro interno ao processar dados.')
+
+async def processar_inventario_webapp(update: Update, context: ContextTypes.DEFAULT_TYPE, data):
+    """Processar inventário finalizado no WebApp"""
+    try:
+        items = data.get('items', [])
+        summary = data.get('summary', {})
+        user_info = data.get('user', {})
+        
+        if not items:
+            await update.message.reply_text('Nenhum item foi inventariado.')
+            return
+        
+        # Salvar inventário no banco
+        timestamp = datetime.now().isoformat()
+        user_id = update.effective_user.id
+        user_name = update.effective_user.first_name or 'Usuário'
+        
+        # Criar relatório
+        texto_relatorio = f'📋 <b>Relatório de Inventário</b>\n\n'
+        texto_relatorio += f'👤 Usuário: {user_name}\n'
+        texto_relatorio += f'📅 Data: {datetime.now().strftime("%d/%m/%Y %H:%M")}\n'
+        texto_relatorio += f'📦 Total de itens: {len(items)}\n\n'
+        
+        # Processar cada item
+        for item in items:
+            item_id = item.get('id')
+            quantidade_inventario = item.get('quantity', 0)
+            
+            # Buscar dados atuais do item
+            async with aiosqlite.connect(DB_PATH) as db:
+                cursor = await db.execute(
+                    "SELECT nome, quantidade FROM itens WHERE id = ?", 
+                    (item_id,)
+                )
+                item_atual = await cursor.fetchone()
+            
+            if item_atual:
+                nome_item, quantidade_atual = item_atual
+                diferenca = quantidade_inventario - quantidade_atual
+                
+                texto_relatorio += f'• <b>{nome_item}</b> (ID: {item_id})\n'
+                texto_relatorio += f'  Estoque atual: {quantidade_atual}\n'
+                texto_relatorio += f'  Inventariado: {quantidade_inventario}\n'
+                
+                if diferenca > 0:
+                    texto_relatorio += f'  📈 Diferença: +{diferenca}\n'
+                elif diferenca < 0:
+                    texto_relatorio += f'  📉 Diferença: {diferenca}\n'
+                else:
+                    texto_relatorio += f'  ✅ Sem diferença\n'
+                texto_relatorio += '\n'
+                
+                # Atualizar quantidade no banco
+                await db.execute(
+                    "UPDATE itens SET quantidade = ? WHERE id = ?",
+                    (quantidade_inventario, item_id)
+                )
+                
+                # Registrar movimentação
+                await db.execute(
+                    "INSERT INTO movimentacoes (item_id, acao, detalhes, usuario, data_hora) VALUES (?, ?, ?, ?, ?)",
+                    (item_id, 'Inventário WebApp', f'Ajuste: {quantidade_atual} → {quantidade_inventario}', user_name, timestamp)
+                )
+                
+                await db.commit()
+        
+        # Resumo
+        if summary:
+            texto_relatorio += f'📊 <b>Resumo:</b>\n'
+            texto_relatorio += f'• Itens adicionados: {summary.get("items_added", 0)}\n'
+            texto_relatorio += f'• Diferenças encontradas: {summary.get("differences_found", 0)}\n'
+        
+        await update.message.reply_text(texto_relatorio, parse_mode='HTML')
+        
+        # Salvar relatório em arquivo
+        relatorio_path = os.path.join(os.path.dirname(__file__), '../inventarios')
+        os.makedirs(relatorio_path, exist_ok=True)
+        
+        filename = f'inventario_webapp_{timestamp.replace(":", "-").replace(".", "-")}.json'
+        filepath = os.path.join(relatorio_path, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump({
+                'timestamp': timestamp,
+                'user_id': user_id,
+                'user_name': user_name,
+                'items': items,
+                'summary': summary,
+                'total_items': len(items)
+            }, f, ensure_ascii=False, indent=2)
+        
+        await update.message.reply_text(
+            f'✅ Inventário salvo com sucesso!\nArquivo: {filename}'
+        )
+        
+    except Exception as e:
+        logging.error(f'Erro ao processar inventário WebApp: {str(e)}')
+        await update.message.reply_text('Erro ao processar inventário. Tente novamente.')
+
+async def responder_item_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE, data):
+    """Responder lookup de item do WebApp"""
+    try:
+        item_id = data.get('item_id')
+        
+        if not item_id:
+            await update.message.reply_text('ID do item não fornecido.')
+            return
+        
+        async with aiosqlite.connect(DB_PATH) as db:
+            cursor = await db.execute(
+                "SELECT id, nome, descricao, quantidade, categoria, status FROM itens WHERE id = ?",
+                (item_id,)
+            )
+            item = await cursor.fetchone()
+        
+        if item:
+            item_data = {
+                'id': item[0],
+                'nome': item[1],
+                'descricao': item[2],
+                'quantidade': item[3],
+                'categoria': item[4],
+                'status': item[5]
+            }
+            
+            # Enviar dados de volta para o WebApp (se necessário)
+            texto = f'✅ Item encontrado: {item_data["nome"]}'
+            await update.message.reply_text(texto)
+        else:
+            await update.message.reply_text('❌ Item não encontrado.')
+            
+    except Exception as e:
+        logging.error(f'Erro no lookup de item: {str(e)}')
+        await update.message.reply_text('Erro ao buscar item.')
+
+# ==================== END WEBAPP FUNCTIONS ====================
 
 # Cadastro de novos itens
 async def novoitem(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -913,6 +1128,7 @@ def main():
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('ajuda', ajuda))
     app.add_handler(CommandHandler('menu', menu))
+    app.add_handler(CommandHandler('webapp', webapp_inventario))
     app.add_handler(CommandHandler('buscar', buscar))
     app.add_handler(CommandHandler('relatorio', relatorio))
     app.add_handler(CommandHandler('historico', historico))
@@ -929,6 +1145,8 @@ def main():
     app.add_handler(CallbackQueryHandler(mostrar_detalhe_item, pattern=r'^detalhe_'))
     app.add_handler(MessageHandler(filters.PHOTO & filters.CaptionRegex('^/buscar_qr'), buscar_qr))
     app.add_handler(MessageHandler(filters.Document.ALL & filters.CaptionRegex('^/restaurar'), restaurar))
+    # Handler para dados do WebApp
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_message_handler))
 
     app.run_polling()
 

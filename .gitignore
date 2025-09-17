@@ -3,6 +3,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Arquivos temporários do projeto
+*.pid
+.bot.pid
+.webapp.pid
+
+# Logs
+logs/
+*.log
+
+# Relatórios temporários
+*_test_report.txt
+mobile_test_report.txt
+
 # C extensions
 *.so
 

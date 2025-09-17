@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Meta tags específicas para mobile -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Inventário QR">
+    
+    <!-- Meta tags para Android -->
+    <meta name="theme-color" content="#007bff">
+    <meta name="msapplication-navbutton-color" content="#007bff">
+    
+    <!-- Previne zoom no iOS -->
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- PWA support -->
+    <link rel="manifest" href="manifest.json">
+    
+    <title>📱 Inventário - QR Scanner</title>
+    
+    <!-- CSS otimizado para mobile -->
+    <link rel="stylesheet" href="css/style-mobile.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Telegram WebApp script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Telegram WebApp CSS -->
+    <style>
+        /* Adaptações específicas para Telegram WebApp */
+        body.telegram-webapp {
+            background: var(--tg-bg-color, #ffffff);
+            color: var(--tg-text-color, #000000);
+        }
+        
+        .header.telegram-webapp {
+            background: var(--tg-secondary-bg-color, rgba(255, 255, 255, 0.95));
+            color: var(--tg-text-color, #000000);
+        }
+        
+        button.telegram-webapp {
+            background: var(--tg-button-color, #007bff);
+            color: var(--tg-button-text-color, #ffffff);
+        }
+        
+        /* Telegram WebApp specific adjustments */
+        .telegram-webapp .container {
+            padding-top: 0; /* Telegram já gerencia o safe area */
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <i class="fas fa-qrcode"></i>
+            <h1>Inventário QR</h1>
+            <div class="counter">
+                <span id="item-counter">0</span> itens
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container">
+        <!-- Scanner Section -->
+        <section class="scanner-section" id="scanner-section">
+            <div class="scanner-container">
+                <div class="camera-frame">
+                    <video id="camera" autoplay playsinline></video>
+                    <div class="scanner-overlay">
+                        <div class="scanner-line"></div>
+                    </div>
+                </div>
+                
+                <div class="scanner-controls">
+                    <button id="toggle-camera" class="btn btn-secondary">
+                        <i class="fas fa-camera"></i>
+                        <span>Iniciar Câmera</span>
+                    </button>
+                    <button id="switch-camera" class="btn btn-secondary" style="display: none;">
+                        <i class="fas fa-sync-alt"></i>
+                        Trocar Câmera
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Messages -->
+            <div class="status-message" id="status-message">
+                <i class="fas fa-info-circle"></i>
+                <span>Posicione o QR Code na moldura para escanear</span>
+            </div>
+        </section>
+
+        <!-- Item Details Section -->
+        <section class="item-section" id="item-section" style="display: none;">
+            <div class="item-card">
+                <div class="item-header">
+                    <i class="fas fa-box"></i>
+                    <h2>Item Encontrado</h2>
+                </div>
+                
+                <div class="item-details">
+                    <div class="detail-row">
+                        <label>ID:</label>
+                        <span id="item-id"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Nome:</label>
+                        <span id="item-name"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Código:</label>
+                        <span id="item-code"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Categoria:</label>
+                        <span id="item-category"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Localização:</label>
+                        <span id="item-location"></span>
+                    </div>
+                    <div class="detail-row highlight">
+                        <label>Qtd Sistema:</label>
+                        <span id="item-system-qty"></span>
+                    </div>
+                </div>
+
+                <!-- Quantity Input -->
+                <div class="quantity-section">
+                    <label for="inventory-qty">Quantidade Encontrada:</label>
+                    <div class="quantity-input">
+                        <button type="button" class="qty-btn" id="qty-minus">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" id="inventory-qty" min="0" value="0" autocomplete="off">
+                        <button type="button" class="qty-btn" id="qty-plus">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button id="add-item" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Adicionar ao Inventário
+                    </button>
+                    <button id="cancel-item" class="btn btn-secondary">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory List -->
+        <section class="inventory-section" id="inventory-section">
+            <div class="inventory-header">
+                <h3>
+                    <i class="fas fa-list"></i>
+                    Itens Inventariados
+                </h3>
+                <button id="clear-inventory" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash"></i>
+                    Limpar Lista
+                </button>
+            </div>
+            
+            <div class="inventory-list" id="inventory-list">
+                <div class="empty-inventory">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhum item inventariado ainda</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer Actions -->
+    <footer class="footer">
+        <div class="footer-actions">
+            <button id="finish-inventory" class="btn btn-success btn-large" disabled>
+                <i class="fas fa-check"></i>
+                Finalizar Inventário
+            </button>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Processando...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="js/qr-scanner.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/telegram-integration.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- Inicialização específica para mobile -->
+    <script>
+        // Detectar se está rodando no Telegram
+        if (window.Telegram && window.Telegram.WebApp) {
+            document.body.classList.add('telegram-webapp');
+            console.log('🚀 Rodando no Telegram WebApp');
+            
+            // Configurar Telegram WebApp
+            window.Telegram.WebApp.expand();
+            window.Telegram.WebApp.ready();
+        }
+
+        // Prevenir comportamentos indesejados em mobile
+        document.addEventListener('touchmove', function(e) {
+            // Prevenir zoom em dispositivos iOS
+            if (e.scale !== 1) { 
+                e.preventDefault(); 
+            }
+        }, { passive: false });
+
+        // Prevenir duplo toque para zoom
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Feedback háptico para dispositivos suportados
+        function hapticFeedback(type = 'impact') {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                switch(type) {
+                    case 'success':
+                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                        break;
+                    case 'error':
+                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+                        break;
+                    case 'warning':
+                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+                        break;
+                    default:
+                        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                }
+            }
+        }
+
+        // Adicionar feedback háptico aos botões
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    hapticFeedback('impact');
+                });
+            });
+
+            // Adicionar feedback específico para ações importantes
+            const addButton = document.getElementById('add-item');
+            if (addButton) {
+                addButton.addEventListener('click', () => hapticFeedback('success'));
+            }
+
+            const finishButton = document.getElementById('finish-inventory');
+            if (finishButton) {
+                finishButton.addEventListener('click', () => hapticFeedback('success'));
+            }
+
+            const clearButton = document.getElementById('clear-inventory');
+            if (clearButton) {
+                clearButton.addEventListener('click', () => hapticFeedback('warning'));
+            }
+        });
+
+        // Orientação da tela
+        function handleOrientationChange() {
+            // Força recalculo do layout após mudança de orientação
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                
+                // Atualiza as dimensões da câmera
+                const video = document.getElementById('camera');
+                if (video && video.srcObject) {
+                    // Re-ajusta o frame da câmera
+                    const frame = document.querySelector('.camera-frame');
+                    if (frame) {
+                        frame.style.height = 'auto';
+                        setTimeout(() => {
+                            frame.style.height = '';
+                        }, 100);
+                    }
+                }
+            }, 100);
+        }
+
+        window.addEventListener('orientationchange', handleOrientationChange);
+        window.addEventListener('resize', handleOrientationChange);
+
+        // Detectar tipo de dispositivo
+        function detectDevice() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isIOS = /iphone|ipad|ipod/.test(userAgent);
+            const isAndroid = /android/.test(userAgent);
+            const isMobile = /mobi|tablet/.test(userAgent);
+            
+            document.body.classList.toggle('ios-device', isIOS);
+            document.body.classList.toggle('android-device', isAndroid);
+            document.body.classList.toggle('mobile-device', isMobile);
+            
+            return { isIOS, isAndroid, isMobile };
+        }
+
+        // Service Worker para PWA (opcional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => console.log('SW registrado'))
+                    .catch(error => console.log('SW falhou'));
+            });
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            const device = detectDevice();
+            
+            // Logs para debug em mobile
+            console.log('📱 WebApp carregado para mobile');
+            console.log('📱 User Agent:', navigator.userAgent);
+            console.log('📱 Viewport:', window.innerWidth + 'x' + window.innerHeight);
+            console.log('📱 Device Pixel Ratio:', window.devicePixelRatio);
+            console.log('📱 Dispositivo:', device);
+            
+            // Telegram WebApp info
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('📱 Telegram WebApp Info:', {
+                    platform: window.Telegram.WebApp.platform,
+                    version: window.Telegram.WebApp.version,
+                    colorScheme: window.Telegram.WebApp.colorScheme,
+                    themeParams: window.Telegram.WebApp.themeParams
+                });
+            }
+        });
+
+        // Gerenciamento de memoria para mobile
+        window.addEventListener('beforeunload', function() {
+            // Limpar recursos da câmera
+            const video = document.getElementById('camera');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Fallback para orientação em dispositivos mais antigos
+        if (screen.orientation) {
+            screen.orientation.addEventListener('change', handleOrientationChange);
+        }
+    </script>
+</body>
+</html>
