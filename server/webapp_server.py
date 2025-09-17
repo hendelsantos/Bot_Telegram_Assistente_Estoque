@@ -17,7 +17,7 @@ import asyncio
 WEBAPP_DIR = os.path.join(os.path.dirname(__file__), '../webapp')
 DB_PATH = os.path.join(os.path.dirname(__file__), '../db/estoque.db')
 HOST = '0.0.0.0'
-PORT = 8080
+PORT = int(os.environ.get('PORT', 8080))
 
 # Criar aplicação Flask
 app = Flask(__name__)
