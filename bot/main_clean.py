@@ -21,6 +21,8 @@ ATUAL_ESCOLHA, ATUAL_NOME, ATUAL_DESC, ATUAL_QTD, ATUAL_FOTO = range(200, 205)
 REPARO_FORNECEDOR, REPARO_DATA = range(300, 302)
 RETORNO_CONFIRMA = 400
 EXCLUIR_CONFIRMA = 500
+# Estados para Inventário
+INVENTARIO_QR, INVENTARIO_QTD, INVENTARIO_CONFIRMA = range(600, 603)
 
 def is_admin(user_id):
     try:
@@ -41,6 +43,7 @@ async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '/buscar <palavra-chave> - Buscar itens\n'
         '/buscar_qr (foto) - Buscar item por QR Code\n'
         '/atualizar <ID> - Atualizar item (admin)\n'
+        '/inventario - Iniciar inventário com QR Code (admin)\n'
         '/enviar_reparo <ID> - Enviar item para reparo (admin)\n'
         '/retornar_reparo <ID> - Retornar item de reparo (admin)\n'
         '/excluir <ID> - Excluir item (admin)\n'
@@ -63,6 +66,7 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton('Cadastrar Novo Item', callback_data='menu_novoitem')],
         [InlineKeyboardButton('Buscar Itens', callback_data='menu_buscar')],
+        [InlineKeyboardButton('Inventário QR', callback_data='menu_inventario')],
         [InlineKeyboardButton('Atualizar Item', callback_data='menu_atualizar')],
         [InlineKeyboardButton('Enviar para Reparo', callback_data='menu_enviar_reparo')],
         [InlineKeyboardButton('Retornar de Reparo', callback_data='menu_retornar_reparo')],
@@ -78,6 +82,8 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text('Use /novoitem para cadastrar um novo item.')
     elif query.data == 'menu_buscar':
         await query.message.reply_text('Use /buscar <palavra-chave> para buscar itens.')
+    elif query.data == 'menu_inventario':
+        await query.message.reply_text('Use /inventario para iniciar um inventário com QR Code.')
     elif query.data == 'menu_atualizar':
         await query.message.reply_text('Use /atualizar <ID> para atualizar um item.')
     elif query.data == 'menu_enviar_reparo':
@@ -536,6 +542,277 @@ async def gerar_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_photo(f, caption=f'QR Code para o item {item_id}')
     os.remove(qr_path)
 
+# Módulo de Inventário
+async def inventario(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text('Apenas administradores podem fazer inventário.')
+        return ConversationHandler.END
+    
+    # Inicializar lista de inventário no contexto
+    context.user_data['inventario_lista'] = []
+    
+    await update.message.reply_text(
+        '📋 <b>Inventário Iniciado!</b>\n\n'
+        'Envie a foto do QR Code do item que deseja inventariar.\n'
+        'Para finalizar o inventário, digite /finalizar_inventario',
+        parse_mode='HTML'
+    )
+    return INVENTARIO_QR
+
+async def inventario_receber_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.photo:
+        # Processar QR Code da foto
+        file = await update.message.photo[-1].get_file()
+        qr_path = f'temp_qr_{update.effective_user.id}.jpg'
+        await file.download_to_drive(qr_path)
+        
+        try:
+            # Ler QR Code
+            img = Image.open(qr_path)
+            decoded_objects = decode(img)
+            
+            if decoded_objects:
+                qr_content = decoded_objects[0].data.decode('utf-8')
+                
+                # Verificar se é um ID válido
+                if qr_content.isdigit():
+                    item_id = int(qr_content)
+                    
+                    # Buscar item no banco
+                    async with aiosqlite.connect(DB_PATH) as db:
+                        cursor = await db.execute('SELECT * FROM itens WHERE id = ?', (item_id,))
+                        item = await cursor.fetchone()
+                    
+                    if item:
+                        # Armazenar item atual no contexto
+                        context.user_data['item_atual'] = {
+                            'id': item[0],
+                            'nome': item[1],
+                            'codigo': item[2],
+                            'categoria': item[3],
+                            'localizacao': item[4],
+                            'quantidade_sistema': item[5]
+                        }
+                        
+                        await update.message.reply_text(
+                            f'📦 <b>Item Encontrado:</b>\n'
+                            f'ID: {item[0]}\n'
+                            f'Nome: {item[1]}\n'
+                            f'Código: {item[2] or "N/A"}\n'
+                            f'Categoria: {item[3] or "N/A"}\n'
+                            f'Localização: {item[4] or "N/A"}\n'
+                            f'Quantidade no Sistema: {item[5]}\n\n'
+                            f'Digite a quantidade encontrada no inventário:',
+                            parse_mode='HTML'
+                        )
+                        return INVENTARIO_QTD
+                    else:
+                        await update.message.reply_text(
+                            'Item não encontrado no banco de dados.\n'
+                            'Envie outro QR Code ou digite /finalizar_inventario'
+                        )
+                        return INVENTARIO_QR
+                else:
+                    await update.message.reply_text(
+                        'QR Code não contém um ID válido.\n'
+                        'Envie outro QR Code ou digite /finalizar_inventario'
+                    )
+                    return INVENTARIO_QR
+            else:
+                await update.message.reply_text(
+                    'Não foi possível ler o QR Code.\n'
+                    'Envie outro QR Code ou digite /finalizar_inventario'
+                )
+                return INVENTARIO_QR
+                
+        except Exception as e:
+            await update.message.reply_text(
+                f'Erro ao processar QR Code: {str(e)}\n'
+                'Envie outro QR Code ou digite /finalizar_inventario'
+            )
+            return INVENTARIO_QR
+        finally:
+            if os.path.exists(qr_path):
+                os.remove(qr_path)
+    else:
+        await update.message.reply_text(
+            'Por favor, envie uma foto do QR Code ou digite /finalizar_inventario'
+        )
+        return INVENTARIO_QR
+
+async def inventario_receber_quantidade(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        quantidade = int(update.message.text)
+        item = context.user_data['item_atual']
+        
+        # Adicionar à lista de inventário
+        inventario_item = {
+            'id': item['id'],
+            'nome': item['nome'],
+            'codigo': item['codigo'],
+            'categoria': item['categoria'],
+            'localizacao': item['localizacao'],
+            'quantidade_sistema': item['quantidade_sistema'],
+            'quantidade_inventario': quantidade,
+            'diferenca': quantidade - item['quantidade_sistema'],
+            'data_inventario': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        context.user_data['inventario_lista'].append(inventario_item)
+        
+        # Mostrar diferença
+        diferenca = quantidade - item['quantidade_sistema']
+        emoji = '✅' if diferenca == 0 else '⚠️' if diferenca > 0 else '❌'
+        
+        await update.message.reply_text(
+            f'{emoji} <b>Item Adicionado ao Inventário:</b>\n'
+            f'Nome: {item["nome"]}\n'
+            f'Sistema: {item["quantidade_sistema"]}\n'
+            f'Inventário: {quantidade}\n'
+            f'Diferença: {diferenca:+d}\n\n'
+            f'Total de itens inventariados: {len(context.user_data["inventario_lista"])}\n\n'
+            f'Envie o próximo QR Code ou digite /finalizar_inventario',
+            parse_mode='HTML'
+        )
+        
+        return INVENTARIO_QR
+        
+    except ValueError:
+        await update.message.reply_text(
+            'Por favor, digite apenas números para a quantidade.'
+        )
+        return INVENTARIO_QTD
+
+async def finalizar_inventario(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if 'inventario_lista' not in context.user_data or not context.user_data['inventario_lista']:
+        await update.message.reply_text('Nenhum item foi inventariado.')
+        return ConversationHandler.END
+    
+    lista = context.user_data['inventario_lista']
+    
+    # Perguntar formato do relatório
+    keyboard = [
+        [InlineKeyboardButton('📄 TXT', callback_data='relatorio_txt')],
+        [InlineKeyboardButton('📊 CSV', callback_data='relatorio_csv')],
+        [InlineKeyboardButton('📗 Excel', callback_data='relatorio_excel')]
+    ]
+    
+    await update.message.reply_text(
+        f'📋 <b>Inventário Concluído!</b>\n\n'
+        f'Total de itens inventariados: {len(lista)}\n'
+        f'Escolha o formato do relatório:',
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
+    
+    return INVENTARIO_CONFIRMA
+
+async def gerar_relatorio_inventario(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if 'inventario_lista' not in context.user_data:
+        await query.edit_message_text('Erro: dados do inventário não encontrados.')
+        return ConversationHandler.END
+    
+    lista = context.user_data['inventario_lista']
+    formato = query.data.split('_')[1]  # txt, csv, ou excel
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    try:
+        if formato == 'txt':
+            # Gerar relatório TXT
+            filename = f'inventario_{timestamp}.txt'
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(f'RELATÓRIO DE INVENTÁRIO\n')
+                f.write(f'Data: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}\n')
+                f.write(f'Total de itens: {len(lista)}\n')
+                f.write('=' * 80 + '\n\n')
+                
+                for item in lista:
+                    f.write(f'ID: {item["id"]}\n')
+                    f.write(f'Nome: {item["nome"]}\n')
+                    f.write(f'Código: {item["codigo"] or "N/A"}\n')
+                    f.write(f'Categoria: {item["categoria"] or "N/A"}\n')
+                    f.write(f'Localização: {item["localizacao"] or "N/A"}\n')
+                    f.write(f'Qtd Sistema: {item["quantidade_sistema"]}\n')
+                    f.write(f'Qtd Inventário: {item["quantidade_inventario"]}\n')
+                    f.write(f'Diferença: {item["diferenca"]:+d}\n')
+                    f.write(f'Data Inventário: {item["data_inventario"]}\n')
+                    f.write('-' * 50 + '\n')
+            
+            with open(filename, 'rb') as f:
+                await query.message.reply_document(f, filename=filename)
+            
+        elif formato == 'csv':
+            # Gerar relatório CSV
+            filename = f'inventario_{timestamp}.csv'
+            df = pd.DataFrame(lista)
+            df.to_csv(filename, index=False, encoding='utf-8-sig', sep=';')
+            
+            with open(filename, 'rb') as f:
+                await query.message.reply_document(f, filename=filename)
+                
+        elif formato == 'excel':
+            # Gerar relatório Excel
+            filename = f'inventario_{timestamp}.xlsx'
+            df = pd.DataFrame(lista)
+            
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Inventário', index=False)
+                
+                # Formatar planilha
+                workbook = writer.book
+                worksheet = writer.sheets['Inventário']
+                
+                # Ajustar largura das colunas
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+            
+            with open(filename, 'rb') as f:
+                await query.message.reply_document(f, filename=filename)
+        
+        # Limpar dados do inventário
+        context.user_data.pop('inventario_lista', None)
+        context.user_data.pop('item_atual', None)
+        
+        await query.edit_message_text(
+            f'✅ Relatório de inventário gerado com sucesso!\n'
+            f'Formato: {formato.upper()}\n'
+            f'Total de itens: {len(lista)}'
+        )
+        
+        # Remover arquivo temporário
+        if os.path.exists(filename):
+            os.remove(filename)
+            
+    except Exception as e:
+        await query.edit_message_text(f'Erro ao gerar relatório: {str(e)}')
+    
+    return ConversationHandler.END
+
+async def cancelar_inventario(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Limpar dados do inventário
+    context.user_data.pop('inventario_lista', None)
+    context.user_data.pop('item_atual', None)
+    
+    await update.message.reply_text(
+        '❌ Inventário cancelado.\n'
+        'Todos os dados foram limpos.',
+        reply_markup=ReplyKeyboardRemove()
+    )
+    return ConversationHandler.END
+
 # Backup e restauração
 async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
@@ -623,6 +900,19 @@ def main():
         fallbacks=[CommandHandler('cancelar', cancelar)],
     )
 
+    inventario_conv = ConversationHandler(
+        entry_points=[CommandHandler('inventario', inventario)],
+        states={
+            INVENTARIO_QR: [
+                MessageHandler(filters.PHOTO, inventario_receber_qr),
+                CommandHandler('finalizar_inventario', finalizar_inventario)
+            ],
+            INVENTARIO_QTD: [MessageHandler(filters.TEXT & ~filters.COMMAND, inventario_receber_quantidade)],
+            INVENTARIO_CONFIRMA: [CallbackQueryHandler(gerar_relatorio_inventario, pattern=r'^relatorio_')]
+        },
+        fallbacks=[CommandHandler('cancelar', cancelar_inventario)],
+    )
+
     # Adicionar handlers
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('ajuda', ajuda))
@@ -638,6 +928,7 @@ def main():
     app.add_handler(enviar_reparo_conv)
     app.add_handler(retorno_reparo_conv)
     app.add_handler(excluir_conv)
+    app.add_handler(inventario_conv)
     app.add_handler(CallbackQueryHandler(menu_callback, pattern=r'^menu_'))
     app.add_handler(CallbackQueryHandler(mostrar_detalhe_item, pattern=r'^detalhe_'))
     app.add_handler(MessageHandler(filters.PHOTO & filters.CaptionRegex('^/buscar_qr'), buscar_qr))

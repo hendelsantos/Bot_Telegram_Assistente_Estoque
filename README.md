@@ -16,6 +16,7 @@ Um bot inteligente para Telegram desenvolvido em Python para gestão completa de
 - ✅ **Histórico**: Rastreamento completo de movimentações
 - ✅ **Alertas**: Notificações para estoque baixo
 - ✅ **QR Code**: Geração e leitura de códigos QR para itens
+- ✅ **Inventário Inteligente**: Contagem rápida com QR Code e relatórios automáticos
 - ✅ **Controle de Usuários**: Sistema de permissões administrativas
 - ✅ **Backup/Restauração**: Proteção e recuperação de dados
 - ✅ **Logs**: Registro detalhado de atividades
@@ -118,6 +119,7 @@ CREATE TABLE movimentacoes (
 - `/menu` - Exibir menu de navegação rápida
 - `/novoitem` - Cadastrar novo item
 - `/buscar` - Buscar itens no estoque
+- `/inventario` - Iniciar inventário com QR Code (admin)
 - `/atualizar` - Atualizar informações de itens
 - `/excluir` - Remover itens do sistema
 - `/relatorio` - Gerar relatórios
@@ -127,7 +129,8 @@ CREATE TABLE movimentacoes (
 ### Menu de Navegação
 O bot possui um menu intuitivo com botões para:
 - 📋 **Gestão**: Cadastro, busca, atualização
-- 🔧 **Reparo**: Envio e retorno de itens para manutenção
+- � **Inventário**: Contagem rápida com QR Code
+- �🔧 **Reparo**: Envio e retorno de itens para manutenção
 - 📊 **Relatórios**: Visualização de dados e estatísticas
 - ⚙️ **Admin**: Funções administrativas (apenas para administradores)
 
