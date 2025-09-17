@@ -7,7 +7,76 @@ Remove funcionalidades que dependem de bibliotecas não disponíveis
 import os
 import logging
 from datetime import datetime, timedelta
-from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardasync def status_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando /status - Status do sistema"""
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            # Total de itens
+            cursor = await db.execute("SELECT COUNT(*) FROM itens")
+            total_itens = (await cursor.fetchone())[0]
+            
+            # Itens com estoque baixo
+            cursor = await db.execute("SELECT COUNT(*) FROM itens WHERE quantidade < 5")
+            estoque_baixo = (await cursor.fetchone())[0]
+            
+            # Últimos itens adicionados
+            cursor = await db.execute("""
+                SELECT nome, codigo, data_cadastro 
+                FROM itens 
+                ORDER BY data_cadastro DESC 
+                LIMIT 3
+            """)
+            ultimos = await cursor.fetchall()
+        
+        status_msg = f"📊 *Status do Sistema Railway*\n\n"
+        status_msg += f"🚀 Servidor: Railway (Produção)\n"
+        status_msg += f"📦 Total de itens: *{total_itens}*\n"
+        status_msg += f"⚠️ Estoque baixo: *{estoque_baixo}*\n"
+        status_msg += f"🌐 WebApp: ✅ Ativo\n\n"
+        
+        if ultimos:
+            status_msg += "🆕 *Últimos adicionados:*\n"
+            for nome, codigo, data in ultimos:
+                data_formatada = data[:10] if data else 'N/A'
+                status_msg += f"• {codigo} - {nome} ({data_formatada})\n"
+        
+        status_msg += f"\n💡 Acesse o WebApp: /webapp"
+        
+        await update.message.reply_text(status_msg, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter status: {e}")
+        await update.message.reply_text("❌ Erro ao obter status do sistema.")
+
+async def help_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando /help"""
+    help_text = """
+🤖 *Assistente de Estoque - Railway*
+
+📱 *Comando Principal:*
+/webapp - Interface mobile completa
+
+🔍 *Comandos de Consulta:*
+/buscar <termo> - Buscar itens
+/status - Status do sistema
+/relatorio - Relatório básico
+
+➕ *Gerenciamento:*
+/adicionar - Adicionar item (via WebApp)
+/inventario - Fazer inventário (via WebApp)
+
+💡 *Dica:*
+Para funcionalidades completas use o /webapp que oferece:
+• Scanner QR em tempo real
+• Interface otimizada para mobile
+• Códigos automáticos (NOTE-001, MOUS-001)
+• Busca inteligente
+• Relatórios detalhados
+
+🚀 *Rodando em produção no Railway!*
+"""
+    
+    await update.message.reply_text(help_text, parse_mode='Markdown') WebAppInfo
 from telegram.ext import (ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler)
 import aiosqlite
 import pandas as pd
@@ -39,20 +108,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import dos utilitários locais
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Import dos utilitários locais (opcional)
+code_generator = None
+smart_search = None
 
 try:
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     from utils.code_generator import CodeGenerator
     from utils.smart_search import SmartSearch
-    code_generator = CodeGenerator()
-    smart_search = SmartSearch()
+    code_generator = CodeGenerator(DB_PATH)
+    smart_search = SmartSearch(DB_PATH)
     logger.info("✅ Utilitários carregados com sucesso")
-except ImportError as e:
-    logger.warning(f"⚠️ Erro ao carregar utilitários: {e}")
-    code_generator = None
-    smart_search = None
+except Exception as e:
+    logger.warning(f"⚠️ Utilitários não disponíveis (modo básico): {e}")
+    # Continua funcionando sem os utilitários
 
 # Função auxiliar para processar QR codes via texto (sem pyzbar)
 def process_qr_text(qr_text):
@@ -199,7 +269,81 @@ async def buscar_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "❌ Erro ao realizar busca. Tente novamente ou use /webapp"
         )
 
-async def status_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def adicionar_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando /adicionar - Simplificado para Railway"""
+    await update.message.reply_text(
+        "➕ *Adicionar Item*\n\n"
+        "Para adicionar itens, use o WebApp mobile que tem:\n"
+        "📱 Interface completa\n"
+        "📷 Scanner QR\n"
+        "🏷️ Códigos automáticos\n"
+        "📋 Formulários otimizados\n\n"
+        "👆 Clique no botão abaixo para adicionar:",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "📱 Abrir WebApp", 
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )
+        ]]),
+        parse_mode='Markdown'
+    )
+
+async def inventario_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando /inventario - Direciona para WebApp"""
+    await update.message.reply_text(
+        "📊 *Inventário*\n\n"
+        "Para realizar inventário, use o WebApp que oferece:\n"
+        "📱 Scanner QR em tempo real\n"
+        "✅ Contagem rápida\n"
+        "📊 Relatórios automáticos\n"
+        "💾 Salvamento instantâneo\n\n"
+        "👆 Acesse o inventário mobile:",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "📊 Fazer Inventário", 
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )
+        ]]),
+        parse_mode='Markdown'
+    )
+
+async def relatorio_comando(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comando /relatorio - Gera relatório básico"""
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            # Estatísticas gerais
+            cursor = await db.execute("SELECT COUNT(*) FROM itens")
+            total = (await cursor.fetchone())[0]
+            
+            cursor = await db.execute("SELECT SUM(quantidade) FROM itens")
+            total_qtd = (await cursor.fetchone())[0] or 0
+            
+            cursor = await db.execute("SELECT COUNT(*) FROM itens WHERE quantidade < 5")
+            baixo_estoque = (await cursor.fetchone())[0]
+            
+            cursor = await db.execute("SELECT categoria, COUNT(*) FROM itens GROUP BY categoria ORDER BY COUNT(*) DESC LIMIT 5")
+            categorias = await cursor.fetchall()
+        
+        relatorio = f"📊 *Relatório de Estoque*\n\n"
+        relatorio += f"📦 Total de itens: *{total}*\n"
+        relatorio += f"🔢 Quantidade total: *{total_qtd}*\n"
+        relatorio += f"⚠️ Estoque baixo: *{baixo_estoque}*\n\n"
+        
+        if categorias:
+            relatorio += "🏷️ *Top Categorias:*\n"
+            for cat, count in categorias:
+                relatorio += f"• {cat or 'Sem categoria'}: {count} itens\n"
+        
+        relatorio += f"\n💡 Relatório completo no WebApp: /webapp"
+        
+        await update.message.reply_text(relatorio, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Erro no relatório: {e}")
+        await update.message.reply_text(
+            "❌ Erro ao gerar relatório.\n\n"
+            "💡 Use o WebApp para relatórios completos: /webapp"
+        )
     """Comando /status - Status do sistema"""
     try:
         async with aiosqlite.connect(DB_PATH) as db:
@@ -256,7 +400,11 @@ def main():
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('webapp', webapp_command))
     application.add_handler(CommandHandler('buscar', buscar_comando))
+    application.add_handler(CommandHandler('adicionar', adicionar_comando))
+    application.add_handler(CommandHandler('inventario', inventario_comando))
+    application.add_handler(CommandHandler('relatorio', relatorio_comando))
     application.add_handler(CommandHandler('status', status_comando))
+    application.add_handler(CommandHandler('help', help_comando))
     
     # Iniciar bot
     logger.info("✅ Bot iniciado com sucesso!")
